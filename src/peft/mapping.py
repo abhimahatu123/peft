@@ -40,6 +40,8 @@ from .tuners import (
     IA3Model,
     LNTuningConfig,
     LNTuningModel,
+    EnsembleConfig,
+    EnsembleModel,
     LoHaConfig,
     LoHaModel,
     LoKrConfig,
@@ -89,6 +91,7 @@ PEFT_TYPE_TO_CONFIG_MAPPING: dict[str, type[PeftConfig]] = {
     "OFT": OFTConfig,
     "POLY": PolyConfig,
     "LN_TUNING": LNTuningConfig,
+    "ENSEMBLE": EnsembleConfig,
     "VERA": VeraConfig,
 }
 

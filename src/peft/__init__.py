@@ -79,6 +79,8 @@ from .tuners import (
     PolyModel,
     LNTuningConfig,
     LNTuningModel,
+    EnsembleConfig,
+    EnsembleModel,
     VeraConfig,
     VeraModel,
 )
