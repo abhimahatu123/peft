@@ -13,7 +13,7 @@ class DepthwisePointwiseConvBlock(nn.Module):
         # self.pointwise = nn.Conv2d(out_channels, in_channels, kernel_size=1, bias=False)
         # self.relu = nn.ReLU()
         self.in_channels = 1
-        self.out_channels = 64
+        self.out_channels = 256
 
         self.depthwise = nn.Conv2d(self.in_channels, self.out_channels, kernel_size=1, bias=False)
         self.pointwise = nn.Conv2d(self.out_channels, self.in_channels, kernel_size=1, bias=False)
@@ -130,12 +130,12 @@ class EnsembleLayer(nn.Module, BaseTunerLayer):
         if self._disable_adapters:
             if self.merged:
                 self.unmerge()
-            x = x.view(-1, hidden_dim)
-            x = self.base_layer(x)
+            # x = x.view(-1, hidden_dim)
+            # x = self.base_layer(x)
             result = self.base_layer(x, *args, **kwargs)
         elif self.merged:
-            x = x.view(-1, hidden_dim)
-            x = self.base_layer(x)
+            # x = x.view(-1, hidden_dim)
+            # x = self.base_layer(x)
             result = self.base_layer(x, *args, **kwargs)
         else:
             if len(self._active_adapter) != 1:
