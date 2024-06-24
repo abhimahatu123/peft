@@ -5,12 +5,8 @@ from typing import Optional, List
 from peft.tuners.tuners_utils import BaseTunerLayer, check_adapters_to_merge
 
 class DepthwisePointwiseConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, depth_multiplier=1):
+    def __init__(self):
         super(DepthwisePointwiseConvBlock, self).__init__()
-        # self.depthwise = nn.Conv2d(in_channels, in_channels * depth_multiplier, kernel_size=kernel_size, groups=in_channels, padding=kernel_size // 2, bias=False)
-        # self.depthwise = nn.Conv2d(in_channels, out_channels, kernel_size, padding=2, bias=False)
-        # # self.pointwise = nn.Conv2d(in_channels * depth_multiplier, out_channels, kernel_size=1, bias=False)
-        # self.pointwise = nn.Conv2d(out_channels, in_channels, kernel_size=1, bias=False)
         # self.relu = nn.ReLU()
         self.in_channels = 1
         self.out_channels = 256
@@ -20,7 +16,6 @@ class DepthwisePointwiseConvBlock(nn.Module):
 
     def forward(self, x):
         batch_size, seq_len, in_features = x.shape
-        # print("SHAPE :: ", x.shape)
         x = x.view(batch_size, 1, in_features, seq_len)  # Reshape for Conv2d
         x = self.depthwise(x)
         # x = self.relu(x)
@@ -35,19 +30,16 @@ class EnsembleLayer(nn.Module, BaseTunerLayer):
 
     adapter_layer_names = ("conv_adapter_layers",)
 
-    def __init__(self, base_layer: nn.Module, adapter_name: str, kernel_size=3, depth_multiplier=1):
+    def __init__(self, base_layer: nn.Module, adapter_name: str):
         super().__init__()
         self.base_layer = base_layer
         self.conv_adapter_layers = nn.ModuleDict({})
-        self.in_channels = base_layer.in_features
-        self.out_channels = base_layer.out_features
-        # print(self.in_channels, self.out_channels)
-        self.update_layer(adapter_name, kernel_size, depth_multiplier)
+        self.update_layer(adapter_name)
         self._active_adapter = adapter_name
         self.merged_adapters = []
 
-    def update_layer(self, adapter_name: str, kernel_size=3, depth_multiplier=1):
-        self.conv_adapter_layers[adapter_name] = DepthwisePointwiseConvBlock(kernel_size, self.in_channels, self.out_channels, depth_multiplier)
+    def update_layer(self, adapter_name: str):
+        self.conv_adapter_layers[adapter_name] = DepthwisePointwiseConvBlock()
 
     def enable_adapters(self, enabled: bool) -> None:
         """Toggle the enabling and disabling of adapters
@@ -104,38 +96,11 @@ class EnsembleLayer(nn.Module, BaseTunerLayer):
         )
 
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
-        # print(x.shape)
-        # x shape: [batch_size, num_patches, hidden_dim]
-        batch_size, num_patches, hidden_dim = x.size()
-        
-        # # Reshape to [batch_size * num_patches, hidden_dim] for the base layer
-        # x = x.view(-1, hidden_dim)
-        # x = self.base_layer(x)
-        
-        # # Reshape back to [batch_size, num_patches, hidden_dim]
-        # x = x.view(batch_size, num_patches, -1)
-        
-        # # Now reshape to [batch_size, num_patches, height, width]
-        # x = x.permute(0, 2, 1).contiguous()  # shape: [batch_size, hidden_dim, num_patches]
-        # x = x.view(batch_size, hidden_dim, int(num_patches ** 0.5), int(num_patches ** 0.5))  # assuming square patches
-        
-        # # Apply convolutional adapters
-        # for _, layer in self.conv_adapter_layers.items():
-        #     x = layer(x)
-        
-        # # Flatten back to [batch_size, num_patches, hidden_dim]
-        # x = x.view(batch_size, hidden_dim, -1).permute(0, 2, 1).contiguous()
-        # return x
-
         if self._disable_adapters:
             if self.merged:
                 self.unmerge()
-            # x = x.view(-1, hidden_dim)
-            # x = self.base_layer(x)
             result = self.base_layer(x, *args, **kwargs)
         elif self.merged:
-            # x = x.view(-1, hidden_dim)
-            # x = self.base_layer(x)
             result = self.base_layer(x, *args, **kwargs)
         else:
             if len(self._active_adapter) != 1:
@@ -144,14 +109,13 @@ class EnsembleLayer(nn.Module, BaseTunerLayer):
                     f"adapters, but CustomConv does not allow inference with more than one adapter at a time"
                 )
             active_adapter = self._active_adapter[0]
-            # x = x.permute(0, 2, 1).contiguous()
             result = self.conv_adapter_layers[active_adapter](x, *args, **kwargs)
 
         return result
 
     def __repr__(self) -> str:
         rep = super().__repr__()
-        return "custom_conv." + rep
+        return "ensemble." + rep
 
     def set_adapter(self, adapter_name):
         self._active_adapter = adapter_name
