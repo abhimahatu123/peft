@@ -22,7 +22,8 @@ from tqdm import tqdm
 
 from peft.config import PeftConfig
 from peft.tuners.tuners_utils import BaseTuner, _get_submodules, check_target_module_exists
-from peft.utils import TRANSFORMERS_MODELS_TO_LNTUNING_TARGET_MODULES_MAPPING, ModulesToSaveWrapper
+# from peft.utils import TRANSFORMERS_MODELS_TO_LNTUNING_TARGET_MODULES_MAPPING, ModulesToSaveWrapper
+from peft.utils import ModulesToSaveWrapper
 
 from .layer import EnsembleLayer
 
@@ -35,7 +36,7 @@ class EnsembleModel(BaseTuner):
 
     Args:
         model ([`torch.nn.Module`]): The model to be adapted.
-        config ([`LNTuningConfig`]): The configuration of the Lora model.
+        config ([`EnsembleConfig`]): The configuration of the Lora model.
         adapter_name (`str`): The name of the adapter, defaults to `"default"`.
 
     Returns:
@@ -45,9 +46,9 @@ class EnsembleModel(BaseTuner):
 
         ```py
         >>> from transformers import AutoModelForCausalLM
-        >>> from peft import get_peft_model, TaskType, LNTuningConfig
+        >>> from peft import get_peft_model, TaskType, EnsembleConfig
 
-        >>> peft_config = LNTuningConfig(
+        >>> peft_config = EnsembleConfig(
         ...     task_type=TaskType.CAUSAL_LM,
         ... )
 
@@ -58,10 +59,10 @@ class EnsembleModel(BaseTuner):
 
     **Attributes**:
         - **model** ([`~transformers.PreTrainedModel`]) -- The model to be adapted.
-        - **peft_config** ([`LNTuningConfig`]): The configuration of the Lora model.
+        - **peft_config** ([`EnsembleConfig`]): The configuration of the Lora model.
     """
 
-    prefix: str = "ln_tuning_"
+    prefix: str = "ensemble_"
 
     def __init__(self, model, config, adapter_name) -> None:
         # self.adapter_name = adapter_name
@@ -75,14 +76,20 @@ class EnsembleModel(BaseTuner):
             return getattr(self.model, name)
 
     # TODO: here need to handle the modules_to_save rather than the target_modules
+    # @staticmethod
+    # def _prepare_adapter_config(peft_config: PeftConfig, model_config: dict) -> PeftConfig:
+    #     if peft_config.target_modules is None:
+    #         if model_config["model_type"] not in TRANSFORMERS_MODELS_TO_LNTUNING_TARGET_MODULES_MAPPING:
+    #             raise ValueError("Please specify `target_modules` in `peft_config`")
+    #         peft_config.target_modules = set(
+    #             TRANSFORMERS_MODELS_TO_LNTUNING_TARGET_MODULES_MAPPING[model_config["model_type"]]
+    #         )
+    #     return peft_config
+
     @staticmethod
-    def _prepare_adapter_config(peft_config: PeftConfig, model_config: dict) -> PeftConfig:
+    def _prepare_adapter_config(peft_config, model_config):
         if peft_config.target_modules is None:
-            if model_config["model_type"] not in TRANSFORMERS_MODELS_TO_LNTUNING_TARGET_MODULES_MAPPING:
-                raise ValueError("Please specify `target_modules` in `peft_config`")
-            peft_config.target_modules = set(
-                TRANSFORMERS_MODELS_TO_LNTUNING_TARGET_MODULES_MAPPING[model_config["model_type"]]
-            )
+            raise ValueError("Please specify `target_modules` in `peft_config`")
         return peft_config
 
     def _create_and_replace(
@@ -107,10 +114,10 @@ class EnsembleModel(BaseTuner):
         adapter_name: str,
     ) -> Module:
         if not isinstance(target, EnsembleLayer):
-            new_module = EnsembleLayer(target, adapter_name, 3, 32)
+            new_module = EnsembleLayer(target, adapter_name, 128, 128)
         else:
             new_module = target
-            new_module.update_layer(target.base_layer, adapter_name, 3, 32)
+            new_module.update_layer(target.base_layer, adapter_name, 128, 128)
         return new_module
 
     def _replace_module(self, parent: Module, child_name: str, new_module: Module, child: Module) -> None:

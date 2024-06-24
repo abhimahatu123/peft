@@ -7,17 +7,22 @@ from peft.tuners.tuners_utils import BaseTunerLayer, check_adapters_to_merge
 class DepthwisePointwiseConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, depth_multiplier=1):
         super(DepthwisePointwiseConvBlock, self).__init__()
-        self.depthwise = nn.Conv2d(in_channels, in_channels * depth_multiplier, kernel_size=kernel_size, groups=in_channels, padding=kernel_size // 2)
-        self.pointwise = nn.Conv2d(in_channels * depth_multiplier, out_channels, kernel_size=1)
-        self.relu = nn.ReLU()
+        # self.depthwise = nn.Conv2d(in_channels, in_channels * depth_multiplier, kernel_size=kernel_size, groups=in_channels, padding=kernel_size // 2, bias=False)
+        # self.depthwise = nn.Conv2d(in_channels, out_channels, kernel_size, padding=2, bias=False)
+        # # self.pointwise = nn.Conv2d(in_channels * depth_multiplier, out_channels, kernel_size=1, bias=False)
+        # self.pointwise = nn.Conv2d(out_channels, in_channels, kernel_size=1, bias=False)
+        # self.relu = nn.ReLU()
+        self.depthwise = nn.Conv2d(in_channels, in_channels, kernel_size=kernel_size, stride=1, padding=1, groups=in_channels, bias=False)
+        self.pointwise = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, bias=False)
 
     def forward(self, x):
-        batch_size, seq_len, in_features = x.shape
-        x = x.view(batch_size, in_features, seq_len, 1)  # Reshape for Conv2d
+        # batch_size, seq_len, in_features = x.shape
+        # print("SHAPE :: ", x.shape)
+        # x = x.view(batch_size, in_features, seq_len, 1)  # Reshape for Conv2d
         x = self.depthwise(x)
-        x = self.relu(x)
+        # x = self.relu(x)
         x = self.pointwise(x)
-        x = x.view(batch_size, seq_len, -1)  # Reshape back to original dimensions
+        # x = x.view(batch_size, seq_len, -1)  # Reshape back to original dimensions
         return x
 
 class EnsembleLayer(nn.Module, BaseTunerLayer):
@@ -93,6 +98,29 @@ class EnsembleLayer(nn.Module, BaseTunerLayer):
         )
 
     def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
+        # print(x.shape)
+        # x shape: [batch_size, num_patches, hidden_dim]
+        # batch_size, num_patches, hidden_dim = x.size()
+        
+        # # Reshape to [batch_size * num_patches, hidden_dim] for the base layer
+        # x = x.view(-1, hidden_dim)
+        # x = self.base_layer(x)
+        
+        # # Reshape back to [batch_size, num_patches, hidden_dim]
+        # x = x.view(batch_size, num_patches, -1)
+        
+        # # Now reshape to [batch_size, num_patches, height, width]
+        # x = x.permute(0, 2, 1).contiguous()  # shape: [batch_size, hidden_dim, num_patches]
+        # x = x.view(batch_size, hidden_dim, int(num_patches ** 0.5), int(num_patches ** 0.5))  # assuming square patches
+        
+        # # Apply convolutional adapters
+        # for _, layer in self.conv_adapter_layers.items():
+        #     x = layer(x)
+        
+        # # Flatten back to [batch_size, num_patches, hidden_dim]
+        # x = x.view(batch_size, hidden_dim, -1).permute(0, 2, 1).contiguous()
+        # return x
+
         if self._disable_adapters:
             if self.merged:
                 self.unmerge()

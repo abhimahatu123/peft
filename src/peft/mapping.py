@@ -41,7 +41,6 @@ from .tuners import (
     LNTuningConfig,
     LNTuningModel,
     EnsembleConfig,
-    EnsembleModel,
     LoHaConfig,
     LoHaModel,
     LoKrConfig,

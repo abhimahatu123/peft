@@ -36,6 +36,7 @@ from peft import (
     BOFTConfig,
     IA3Config,
     LNTuningConfig,
+    EnsembleConfig,
     LoHaConfig,
     LoKrConfig,
     LoraConfig,
@@ -419,6 +420,7 @@ PREFIXES = {
     OFTConfig: "oft_",
     BOFTConfig: "boft_",
     LNTuningConfig: "ln_tuning_",
+    EnsembleConfig: "ensemble_",
     VeraConfig: "vera_lambda_",
 }
 

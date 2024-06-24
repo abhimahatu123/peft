@@ -150,6 +150,9 @@ def get_peft_model_state_dict(
 
     elif config.peft_type == PeftType.LN_TUNING:
         to_return = {k: state_dict[k] for k in state_dict if "ln_tuning_" in k}
+    
+    elif config.peft_type == PeftType.ENSEMBLE:
+        to_return = {k: state_dict[k] for k in state_dict if "ensemble_" in k}
 
     elif config.peft_type == PeftType.VERA:
         to_return = {k: state_dict[k] for k in state_dict if "vera_lambda_" in k}
@@ -299,6 +302,7 @@ def set_peft_model_state_dict(
         PeftType.OFT,
         PeftType.POLY,
         PeftType.LN_TUNING,
+        PeftType.ENSEMBLE,
         PeftType.BOFT,
         PeftType.VERA,
     ):
@@ -313,6 +317,7 @@ def set_peft_model_state_dict(
             PeftType.POLY: "poly_",
             PeftType.BOFT: "boft_",
             PeftType.LN_TUNING: "ln_tuning_",
+            PeftType.ENSEMBLE: "ensemble_",
             PeftType.VERA: "vera_lambda_",
         }[config.peft_type]
         for k, v in state_dict.items():
