@@ -114,10 +114,10 @@ class EnsembleModel(BaseTuner):
         adapter_name: str,
     ) -> Module:
         if not isinstance(target, EnsembleLayer):
-            new_module = EnsembleLayer(target, adapter_name, 128, 128)
+            new_module = EnsembleLayer(target, adapter_name)
         else:
             new_module = target
-            new_module.update_layer(target.base_layer, adapter_name, 128, 128)
+            new_module.update_layer(target.base_layer, adapter_name)
         return new_module
 
     def _replace_module(self, parent: Module, child_name: str, new_module: Module, child: Module) -> None:
