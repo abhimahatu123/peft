@@ -5,22 +5,43 @@ from typing import Optional, List
 from peft.tuners.tuners_utils import BaseTunerLayer, check_adapters_to_merge
 
 class DepthwisePointwiseConvBlock(nn.Module):
-    def __init__(self):
-        super(DepthwisePointwiseConvBlock, self).__init__()
-        # self.relu = nn.ReLU()
+    def __init__(self, in_features=768, reduction_factor=8):
+        super().__init__()
         self.in_channels = 1
-        self.out_channels = 256
-
-        self.depthwise = nn.Conv2d(self.in_channels, self.out_channels, kernel_size=1, bias=False)
-        self.pointwise = nn.Conv2d(self.out_channels, self.in_channels, kernel_size=1, bias=False)
+        # Calculate intermediate dimension based on reduction factor
+        self.intermediate_dim = in_features // reduction_factor
+        
+        # Pointwise convolution to reduce dimensions (like LoRA's A matrix)
+        self.pointwise = nn.Conv2d(
+            self.in_channels, 
+            self.in_channels,
+            kernel_size=1,
+            groups=1,
+            bias=False
+        )
+        
+        # Depthwise convolution for spatial dependencies (like LoRA's B matrix)
+        self.depthwise = nn.Conv2d(
+            self.in_channels,
+            self.in_channels, 
+            kernel_size=3,
+            padding=1,
+            groups=self.in_channels,
+            bias=False
+        )
 
     def forward(self, x):
         batch_size, seq_len, in_features = x.shape
-        x = x.view(batch_size, 1, in_features, seq_len)  # Reshape for Conv2d
-        x = self.depthwise(x)
-        # x = self.relu(x)
+        
+        # Reshape for 2D convolution [batch, channel, height, width]
+        x = x.view(batch_size, self.in_channels, in_features, seq_len)
+        
+        # Apply pointwise -> depthwise convolutions
         x = self.pointwise(x)
-        x = x.view(batch_size, seq_len, in_features)  # Reshape back to original dimensions
+        x = self.depthwise(x)
+        
+        # Reshape back to original dimensions
+        x = x.view(batch_size, seq_len, in_features)
         return x
 
 class EnsembleLayer(nn.Module, BaseTunerLayer):
